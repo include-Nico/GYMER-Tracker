@@ -277,19 +277,22 @@ function liveCard(){return`<h2>Registra con GPS</h2><div class="g" style="paddin
 /* ---------- TIMER ---------- */
 const T={total:db.timers[0],left:db.timers[0],end:0,run:false,iv:null},R=104,C=2*Math.PI*R;
 const rem=()=>T.run?Math.max(0,(T.end-Date.now())/1000):T.left;
-function resume(){if(T.left<=0)T.left=T.total;T.end=Date.now()+T.left*1000;T.run=true;clearInterval(T.iv);T.iv=setInterval(tick,200);sync()}
+function resume(){try{if("Notification"in window&&Notification.permission==="default")Notification.requestPermission().then(sched)}catch(e){}if(T.left<=0)T.left=T.total;T.end=Date.now()+T.left*1000;T.run=true;clearInterval(T.iv);T.iv=setInterval(tick,200);sync()}
 function pause(){T.left=rem();T.run=false;clearInterval(T.iv);sync()}
 function reset(){T.run=false;clearInterval(T.iv);T.left=T.total;sync()}
 function start(s){T.total=s;T.left=s;resume()}
 function addT(s){if(!T.run&&T.left<=0||T.total===0){start(s);return}if(T.run)T.end+=s*1000;else T.left+=s;T.total+=s;sync()}
 function tick(){const r=rem();if(r<=0){done();return}paint(r)}
 function paint(r){const c=$("#rc"),t=$("#rt"),m=$("#mt");if(c)c.style.strokeDashoffset=C*(1-(T.total?r/T.total:0));if(t)t.textContent=fmt(r);if(m)m.textContent=fmt(r)}
-function sync(){mini();if(tab==="timer")render(true);else paint(rem())}
+function sync(){sched();mini();if(tab==="timer")render(true);else paint(rem())}
 const SND={bip:{n:"Bip",w:"sine",p:[[880,0,.18],[880,.28,.18],[880,.56,.18]]},campanello:{n:"Campanello",w:"triangle",p:[[1318,0,.5],[1760,.15,.6],[2093,.3,.8]]},digitale:{n:"Digitale",w:"square",p:[[1200,0,.09],[1600,.12,.09],[1200,.24,.09],[1600,.36,.09],[1200,.48,.09],[1600,.6,.09]]},gong:{n:"Gong",w:"sine",p:[[196,0,1.5],[392,0,1.1],[587,0,.9]]},allarme:{n:"Allarme",w:"sawtooth",p:[[740,0,.2],[988,.22,.2],[740,.44,.2],[988,.66,.2]]},muto:{n:"Silenzioso",w:"sine",p:[]}};
 function beep(k){const s=db.snd,P=SND[k||s.t]||SND.bip;if(!P.p.length||!s.v)return;try{const a=new(window.AudioContext||window.webkitAudioContext)(),m=s.v/100*(P.w==="sine"||P.w==="triangle"?.8:.28);P.p.forEach(([f,t,d])=>{const o=a.createOscillator(),g=a.createGain(),T=a.currentTime+t;o.type=P.w;o.frequency.value=f;o.connect(g);g.connect(a.destination);g.gain.setValueAtTime(.0001,T);g.gain.exponentialRampToValueAtTime(Math.max(m,.0002),T+.02);g.gain.exponentialRampToValueAtTime(.0001,T+d);o.start(T);o.stop(T+d+.05)})}catch(e){}}
 function tap(n){try{if(db.snd.vib>0&&navigator.vibrate)navigator.vibrate(n||14)}catch(e){}}
 function vib(){const d=db.snd.vib;try{if(d>0&&navigator.vibrate)navigator.vibrate([d,Math.round(d/3),d])}catch(e){}}
-function ntf(){try{if(!("Notification"in window)||Notification.permission!=="granted")return;const s=db.snd,o={body:"Recupero finito: tocca a te!",silent:s.t==="muto"||!s.v,vibrate:s.vib?[s.vib,Math.round(s.vib/3),s.vib]:[]},c=navigator.serviceWorker&&navigator.serviceWorker.controller;if(c)c.postMessage({type:"TIMER_DONE",o});else new Notification("GYMER",o)}catch(e){}}
+function nopts(){const s=db.snd,v=s.vib>0;return{body:"Recupero finito: tocca a te!",silent:!v&&(s.t==="muto"||!s.v),vibrate:v?[s.vib,Math.round(s.vib/3),s.vib,Math.round(s.vib/3),s.vib]:[]}}
+function swp(m){try{const c=navigator.serviceWorker&&navigator.serviceWorker.controller;if(c){c.postMessage(m);return true}}catch(e){}return false}
+function ntf(){try{if(!("Notification"in window)||Notification.permission!=="granted")return;if(!swp({type:"TIMER_DONE",at:T.end,o:nopts()}))new Notification("GYMER",nopts())}catch(e){}}
+function sched(){try{if(T.run&&"Notification"in window&&Notification.permission==="granted")swp({type:"TIMER_SET",at:T.end,o:nopts()});else swp({type:"TIMER_CANCEL"})}catch(e){}}
 function done(){T.run=false;T.left=0;clearInterval(T.iv);beep();vib();ntf();sync()}
 function mini(){const m=$("#mini"),show=tab!=="timer"&&(T.run||(T.left>0&&T.left<T.total));m.classList.toggle("show",show);
  if(show)m.innerHTML=`${I("clock")}<span id="mt">${fmt(rem())}</span><button class="gb rd sm" data-a="${T.run?"pause":"play"}">${I(T.run?"pause":"play")}</button>`}
