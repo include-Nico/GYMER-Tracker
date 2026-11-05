@@ -2,7 +2,7 @@
 <html lang="it" data-theme="dark">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
 <title>GYMER Tracker</title>
 <meta name="theme-color" content="#07070d">
 <link rel="manifest" href="/manifest.webmanifest">
@@ -17,7 +17,7 @@
 :root{--bg:#07070d;--tx:#f5f5fa;--mu:#9d9db8;--ac:#8b7bff;--ac2:#27d7ff;--g1:rgba(255,255,255,.2);--g2:rgba(255,255,255,.05);--gbd:rgba(255,255,255,.22);--hi:rgba(255,255,255,.45);--sh:rgba(0,0,0,.35);--sheet:rgba(22,20,40,.82);--o:.55;color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px)}
 :root[data-theme=light]{--bg:#eceefd;--tx:#14142b;--mu:#5f5f7e;--ac:#6a4dff;--ac2:#0aa5d6;--g1:rgba(255,255,255,.85);--g2:rgba(255,255,255,.35);--gbd:rgba(255,255,255,.95);--hi:#fff;--sh:rgba(80,70,160,.22);--sheet:rgba(244,245,255,.88);--o:.45;color-scheme:light}
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
-html,body{margin:0;min-height:100%}
+html,body{margin:0;min-height:100%;max-width:100%;overflow-x:hidden;overscroll-behavior-x:none}html{-webkit-text-size-adjust:100%;touch-action:pan-y}
 body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Roboto,sans-serif;color:var(--tx);background:var(--bg);overflow-x:hidden}
 .bg{position:fixed;inset:0;z-index:-1;overflow:hidden}
 .bg i{position:absolute;border-radius:50%;filter:blur(70px);opacity:var(--o);animation:fl 18s ease-in-out infinite alternate}
@@ -25,7 +25,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Segoe UI",Ro
 .bg i:nth-child(2){width:50vmax;height:50vmax;background:var(--ac2);bottom:-15%;right:-20%;animation-delay:-6s}
 .bg i:nth-child(3){width:35vmax;height:35vmax;background:#ff5fa2;top:40%;left:35%;opacity:calc(var(--o)*.6);animation-delay:-11s}
 @keyframes fl{to{transform:translate(8vmax,6vmax) scale(1.15)}}
-#main{max-width:560px;margin:0 auto;padding:14px 16px calc(120px + env(safe-area-inset-bottom,0px));transition:opacity .15s ease,transform .15s ease}
+#main{max-width:560px;margin:0 auto;overflow-x:clip;padding:14px 16px calc(120px + env(safe-area-inset-bottom,0px));transition:opacity .15s ease,transform .15s ease}
 @keyframes in{from{opacity:0;transform:translateY(14px) scale(.985)}to{opacity:1;transform:none}}
 @keyframes up{from{transform:translateY(100%)}to{transform:none}}
 @keyframes fade{from{opacity:0}}
@@ -91,7 +91,7 @@ label{font-size:12px;color:var(--mu);display:block;margin-bottom:5px;text-align:
 
 #main.xf{opacity:0;transform:translateX(-28px)}#main.xb{opacity:0;transform:translateX(28px)}#main.xt{opacity:0;transform:scale(.97)}
 #main.e>*{animation:rise .55s cubic-bezier(.2,.8,.2,1) both}#main.e.pf>*{--dx:34px}#main.e.pb>*{--dx:-34px}#main.e>*:nth-child(2){animation-delay:0.045s}#main.e>*:nth-child(3){animation-delay:0.090s}#main.e>*:nth-child(4){animation-delay:0.135s}#main.e>*:nth-child(5){animation-delay:0.180s}#main.e>*:nth-child(6){animation-delay:0.225s}#main.e>*:nth-child(7){animation-delay:0.270s}#main.e>*:nth-child(8){animation-delay:0.315s}#main.e>*:nth-child(9){animation-delay:0.360s}
-@keyframes rise{from{opacity:0;transform:translate(var(--dx,0px),0px)}}
+@keyframes rise{from{opacity:0;transform:translate(var(--dx,0px),16px)}}
 .ov.out{animation:fadeo .3s forwards}.ov.out .sheet{animation:dn .3s cubic-bezier(.5,0,.8,.5) forwards}.act.out{animation:dn .32s cubic-bezier(.5,0,.8,.5) forwards}.toast.out{animation:tout .3s forwards}
 @keyframes fadeo{to{opacity:0}}@keyframes dn{to{transform:translateY(100%)}}@keyframes tout{to{opacity:0;transform:translateX(-50%) translateY(-12px)}}
 #mini.show,#apill.show{opacity:1;pointer-events:auto;transform:translateX(-50%)}
@@ -163,7 +163,7 @@ const PAL=["#8b7bff","#27d7ff","#ff5fa2","#34d399","#fbbf24","#fb7185","#60a5fa"
 const grad=c=>`linear-gradient(135deg,${c},color-mix(in srgb,${c} 55%,#000))`,gcol=(g,i)=>g.c||PAL[i%PAL.length];
 const bwv=()=>{const w=db.prof.w;return w.length?w[w.length-1].v:0};
 function cl(o){if(!o||o._c)return;o._c=1;o.style.pointerEvents="none";o.classList.add("out");setTimeout(()=>o.remove(),330)}
-function goto(dir,fn){if(BUSY)return;BUSY=1;DIR=dir;$("#main").className="x"+dir;setTimeout(()=>{BUSY=0;window.scrollTo(0,0);fn();render()},150)}
+function goto(dir,fn){if(BUSY)return;BUSY=1;DIR=dir;$("#main").className="x"+dir;setTimeout(()=>{BUSY=0;fn();render()},150)}
 function navUpd(){const n=$("#nav");if(!n.dataset.b){n.innerHTML='<i class="ind"></i>'+TABS.map(t=>`<button data-a="tab" data-v="${t[0]}">${I(t[1])}${t[2]}</button>`).join("");n.dataset.b=1}const i=TABS.findIndex(t=>t[0]===tab);n.style.setProperty("--i",i);n.querySelectorAll("button").forEach((b,j)=>b.classList.toggle("on",j===i))}
 function toast(m,ic){const old=$(".toast");if(old)cl(old);const t=document.createElement("div");t.className="toast g";t.innerHTML=(ic?`<span style="display:inline-flex;vertical-align:middle;margin-right:8px;color:#fbbf24">${I(ic)}</span>`:"")+esc(m);document.body.appendChild(t);setTimeout(()=>cl(t),2200)}
 function del(msg,fn){const snap=JSON.stringify(db);fn();save();render(true);const old=$(".toast");if(old)old.remove();
