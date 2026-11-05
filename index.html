@@ -248,7 +248,7 @@ function aupd(){if(!A)return;if(AL)AL.innerHTML=aview();const p=$("#apill");if(A
 function ashow(){if(!A)return;if(!AL){AL=document.createElement("div");AL.className="act";document.body.appendChild(AL)}aupd()}
 function amin(){if(AL){cl(AL);AL=null}aupd()}
 async function wl(){try{if(A&&A.run&&"wakeLock"in navigator)A.wl=await navigator.wakeLock.request("screen")}catch(e){}}
-document.addEventListener("visibilitychange",()=>{if(!document.hidden&&A&&A.run)wl()});
+document.addEventListener("visibilitychange",()=>{if(document.hidden)return;if(A&&A.run)wl();if(T.run)tick()});
 function perr(e){toast(e.code===1?"Permesso posizione negato":"Segnale GPS non disponibile");if(A)A.q="assente"}
 function awatch(){if(A.wid==null&&navigator.geolocation)A.wid=navigator.geolocation.watchPosition(onPos,perr,{enableHighAccuracy:true,maximumAge:1000,timeout:30000})}
 function onPos(p){if(!A||!A.run)return;const c=p.coords,pt=[c.latitude,c.longitude,p.timestamp];A.q=Math.round(c.accuracy)+" m";A.vc=c.speed>0?c.speed*3.6:0;
@@ -287,6 +287,7 @@ function paint(r){const c=$("#rc"),t=$("#rt"),m=$("#mt");if(c)c.style.strokeDash
 function sync(){mini();if(tab==="timer")render(true);else paint(rem())}
 const SND={bip:{n:"Bip",w:"sine",p:[[880,0,.18],[880,.28,.18],[880,.56,.18]]},campanello:{n:"Campanello",w:"triangle",p:[[1318,0,.5],[1760,.15,.6],[2093,.3,.8]]},digitale:{n:"Digitale",w:"square",p:[[1200,0,.09],[1600,.12,.09],[1200,.24,.09],[1600,.36,.09],[1200,.48,.09],[1600,.6,.09]]},gong:{n:"Gong",w:"sine",p:[[196,0,1.5],[392,0,1.1],[587,0,.9]]},allarme:{n:"Allarme",w:"sawtooth",p:[[740,0,.2],[988,.22,.2],[740,.44,.2],[988,.66,.2]]},muto:{n:"Silenzioso",w:"sine",p:[]}};
 function beep(k){const s=db.snd,P=SND[k||s.t]||SND.bip;if(!P.p.length||!s.v)return;try{const a=new(window.AudioContext||window.webkitAudioContext)(),m=s.v/100*(P.w==="sine"||P.w==="triangle"?.8:.28);P.p.forEach(([f,t,d])=>{const o=a.createOscillator(),g=a.createGain(),T=a.currentTime+t;o.type=P.w;o.frequency.value=f;o.connect(g);g.connect(a.destination);g.gain.setValueAtTime(.0001,T);g.gain.exponentialRampToValueAtTime(Math.max(m,.0002),T+.02);g.gain.exponentialRampToValueAtTime(.0001,T+d);o.start(T);o.stop(T+d+.05)})}catch(e){}}
+function tap(n){try{if(db.snd.vib>0&&navigator.vibrate)navigator.vibrate(n||14)}catch(e){}}
 function vib(){const d=db.snd.vib;try{if(d>0&&navigator.vibrate)navigator.vibrate([d,Math.round(d/3),d])}catch(e){}}
 function ntf(){try{if(!("Notification"in window)||Notification.permission!=="granted")return;const s=db.snd,o={body:"Recupero finito: tocca a te!",silent:s.t==="muto"||!s.v,vibrate:s.vib?[s.vib,Math.round(s.vib/3),s.vib]:[]},c=navigator.serviceWorker&&navigator.serviceWorker.controller;if(c)c.postMessage({type:"TIMER_DONE",o});else new Notification("GYMER",o)}catch(e){}}
 function done(){T.run=false;T.left=0;clearInterval(T.iv);beep();vib();ntf();sync()}
@@ -322,7 +323,7 @@ function vTrain(){
  if(V.e){const e=E(),t=ty(e),ls=e.logs||[],b1=(e.t||"peso")==="peso"?Math.max(0,...ls.map(e1)):0,l=last(e),lx=ls[ls.length-1]||{},ns=l&&new Date(l.d).toDateString()===new Date().toDateString()?l.s.length+1:1,top=l?Math.max(...l.s.map(t.one)):0;
   return`<h1><button class="gb rd sm" data-a="back">${I("back")}</button><span>${esc(e.name)}</span><div class="tb" style="background:${grad(t.c)};cursor:default">${I(t.i)}</div></h1>
   <div class="g card" style="cursor:default"><div class="mu">${t.n} · ultimo risultato</div><div style="font-size:38px;font-weight:800;letter-spacing:-.02em">${l?+top.toFixed(1)+t.u:"—"}</div><div class="mu">${l?l.s.map(t.fmt).join(" · ")+" · "+fd(l.d):"Registra il tuo primo risultato"}</div>${b1?`<div class="mu" style="margin-top:8px;display:flex;align-items:center;gap:8px"><span style="color:#fbbf24;display:flex">${I("trophy")}</span><span>1RM stimato <b style="color:var(--tx)">${+b1.toFixed(1)} kg</b></span></div>`:""}</div>
-  ${sugCard(e)}${e.t==="cardio"?liveCard():""}<h2>${e.t==="cardio"?"Inserimento manuale":t.nw}</h2><div class="g" style="padding:16px"><div class="fl">${t.f.map(f=>`<div class="nr"><label>${f[1]}</label><div class="step"><button class="gb sm" data-a="st" data-f="${f[0]}" data-d="-${f[2]}">${I("minus")}</button><input id="${f[0]}" type="number" inputmode="${Number.isInteger(f[2])?"numeric":"decimal"}" value="${f[0]==="s"?ns:(lx[f[0]]!==undefined?lx[f[0]]:f[3])}"><button class="gb sm" data-a="st" data-f="${f[0]}" data-d="${f[2]}">${I("plus")}</button></div></div>`).join("")}</div>
+  ${l&&e.t!=="cardio"?`<button class="gb on" data-a="same" style="width:100%;margin-top:12px;padding:16px;border-radius:22px;font-size:16px;flex-direction:column;gap:2px"><span class="row" style="gap:8px">${I("reset")}<b>Come ultima volta</b></span><small style="font-weight:500;opacity:.85;font-size:12px">${t.fmt(lx)} · salva in un tocco</small></button>`:""}${sugCard(e)}${e.t==="cardio"?liveCard():""}<h2>${e.t==="cardio"?"Inserimento manuale":t.nw}</h2><div class="g" style="padding:16px"><div class="fl">${t.f.map(f=>`<div class="nr"><label>${f[1]}</label><div class="step"><button class="gb sm" data-a="st" data-f="${f[0]}" data-d="-${f[2]}">${I("minus")}</button><input id="${f[0]}" type="number" inputmode="${Number.isInteger(f[2])?"numeric":"decimal"}" value="${f[0]==="s"?ns:(lx[f[0]]!==undefined?lx[f[0]]:f[3])}"><button class="gb sm" data-a="st" data-f="${f[0]}" data-d="${f[2]}">${I("plus")}</button></div></div>`).join("")}</div>
   <button class="gb acc ${OPEN.det?"open":""}" data-a="tg" data-v="det" style="margin-bottom:4px"><span class="row" style="gap:10px">${I("pulse")}<b>Sforzo e note</b></span><span class="mu sp" style="text-align:right;font-weight:500">facoltativo</span>${I("chev","cv")}</button>
   <div class="col ${OPEN.det?"open":""}" id="c-det"><div><div style="padding-top:8px"><div class="rr"><div class="row"><b style="font-size:15px">Sforzo (RPE)</b><span class="sp"></span><span class="mu" id="rpl">non indicato</span></div><input type="range" id="rpe" min="0" max="10" step="1" value="0"></div><input id="nt" maxlength="80" placeholder="Nota (es. buona tecnica)" style="text-align:left;margin-bottom:12px"></div></div></div>
   <button class="gb on" data-a="log" style="width:100%;padding:14px">${I("check")} ${t.sv}</button></div>
@@ -377,7 +378,7 @@ function render(keep){
 /* ---------- EVENTS ---------- */
 const SLOW={log:1,prof:1,astart:1,aend:1,imp:1,exp:1};
 document.addEventListener("click",ev=>{
- const el=ev.target.closest("[data-a]");if(!el)return;const a=el.dataset.a,v=el.dataset.v,g=G(),e=E();
+ const el=ev.target.closest("[data-a]");if(!el)return;const a=el.dataset.a,v=el.dataset.v,g=G(),e=E();if(a!=="log"&&a!=="same")tap();
  if(SLOW[a]){const n=Date.now();if(n-(LK[a]||0)<900)return;LK[a]=n}
  if(a==="tab"){if(v===tab&&!(v==="train"&&(V.g||V.e)))return;const ni=TABS.findIndex(t=>t[0]===v),oi=TABS.findIndex(t=>t[0]===tab);goto(ni>=oi?"f":"b",()=>{tab=v;EM=0;OPEN.prof=OPEN.bk=OPEN.det=0;if(v==="train")V={}})}
  else if(a==="grp")goto("f",()=>{EM=0;V={g:v}});else if(a==="ex")goto("f",()=>{OPEN.det=0;V={g:V.g,e:v}});
@@ -398,7 +399,8 @@ document.addEventListener("click",ev=>{
  else if(a==="st"){const i=$("#"+el.dataset.f);i.value=Math.min(LIM[el.dataset.f]||999,Math.max(0,+((+i.value)+(+el.dataset.d)).toFixed(1)))}
  else if(a==="log"){const t=ty(e),o={d:Date.now()};let bad=0;t.f.forEach(f=>{const x=+$("#"+f[0]).value||0;if(x<0||x>(LIM[f[0]]||999))bad=1;o[f[0]]=Math.round(x*100)/100});if(bad){toast("Controlla i valori inseriti");return}if(!(o[t.req]>0))return;const td=new Date().toDateString();if(e.logs.filter(x=>new Date(x.d).toDateString()===td).length>=60){toast("Limite giornaliero raggiunto (60)");return}const rp=+($("#rpe")||{}).value,nt=(($("#nt")||{}).value||"").trim().slice(0,80);if(rp)o.p=rp;if(nt)o.n=nt;
   const pv=e.logs.map(x=>rv(e,x)),nv=rv(e,o),isPR=pv.length>0&&nv>0&&nv>Math.max(...pv);if(isPR)o.pr=1;
-  e.logs.push(o);save();if(isPR){toast("Nuovo record! "+(PRL[e.t||"peso"]||PRL.peso)(nv),"trophy");beep("campanello");vib()}else toast("Salvato");render(true)}
+  e.logs.push(o);save();if(isPR){toast("Nuovo record! "+(PRL[e.t||"peso"]||PRL.peso)(nv),"trophy");beep("campanello");vib()}else{toast("Salvato");tap([30,40,30])}render(true)}
+ else if(a==="same"){const t=ty(e),lx=(e.logs||[])[(e.logs||[]).length-1];if(!lx)return;t.f.forEach(f=>{const i=$("#"+f[0]);if(i&&f[0]!=="s"&&lx[f[0]]!==undefined)i.value=lx[f[0]]});const r=$("#rpe"),n=$("#nt");if(r)r.value=0;if(n)n.value="";const b=$("[data-a=log]");if(b)b.click()}
  else if(a==="dlog")del("Serie eliminata",()=>{e.logs=e.logs.filter(x=>x.d!==+v)});
  else if(a==="pe"){PE=v;render(true)}else if(a==="met"){db.metric=v;save();render(true)}
  else if(a==="th"){db.theme=v;save();render(true)}
