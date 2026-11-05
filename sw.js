@@ -1,5 +1,5 @@
 /* GYMER service worker: offline shell + notifiche timer */
-const CACHE = "gymer-v1";
+const CACHE = "gymer-v4";
 const SHELL = ["/", "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 self.addEventListener("install", (e) => {
@@ -35,14 +35,12 @@ self.addEventListener("fetch", (e) => {
 // Notifica "recupero finito" (la pagina invia un messaggio al SW)
 self.addEventListener("message", (e) => {
   if (e.data && e.data.type === "TIMER_DONE") {
-    self.registration.showNotification("GYMER", {
-      body: "Recupero finito: tocca a te!",
+    self.registration.showNotification("GYMER", Object.assign({
       icon: "/icons/icon-192.png",
       badge: "/icons/icon-192.png",
       tag: "gymer-timer",
       renotify: true,
-      vibrate: [300, 120, 300],
-    });
+    }, e.data.o || { body: "Recupero finito: tocca a te!" }));
   }
 });
 
