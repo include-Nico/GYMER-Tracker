@@ -118,6 +118,7 @@ body{transition:background-color .4s,color .4s}.bg i{transition:opacity .6s}
 <div class="bg"><i></i><i></i><i></i></div>
 <svg width="0" height="0" style="position:absolute"><defs>
 <symbol id="i-dumbbell" viewBox="0 0 24 24"><path d="M6.5 6.5v11M17.5 6.5v11M3.5 9.5v5M20.5 9.5v5M6.5 12h11"/></symbol>
+<symbol id="i-pip" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="3"/><rect x="12" y="11" width="6" height="5" rx="1.5"/></symbol>
 <symbol id="i-timer" viewBox="0 0 24 24"><circle cx="12" cy="13.5" r="7.5"/><path d="M12 9.5v4l2.5 2M9.5 2.5h5M19 6l1.5-1.5"/></symbol>
 <symbol id="i-trend" viewBox="0 0 24 24"><path d="M3 17l6-6 4 4 8-8M15 7h6v6"/></symbol>
 <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 6h9M19 6h1M4 12h3M13 12h7M4 18h11M21 18h-1"/><circle cx="16" cy="6" r="2.2"/><circle cx="10" cy="12" r="2.2"/><circle cx="18" cy="18" r="2.2"/></symbol>
@@ -248,7 +249,7 @@ function aupd(){if(!A)return;if(AL)AL.innerHTML=aview();const p=$("#apill");if(A
 function ashow(){if(!A)return;if(!AL){AL=document.createElement("div");AL.className="act";document.body.appendChild(AL)}aupd()}
 function amin(){if(AL){cl(AL);AL=null}aupd()}
 async function wl(){try{if(A&&A.run&&"wakeLock"in navigator)A.wl=await navigator.wakeLock.request("screen")}catch(e){}}
-document.addEventListener("visibilitychange",()=>{if(document.hidden)return;if(A&&A.run)wl();if(T.run)tick()});
+document.addEventListener("visibilitychange",()=>{if(document.hidden)return;if(A&&A.run)wl();if(T.run)tick();swp({type:"TG"})});
 function perr(e){toast(e.code===1?"Permesso posizione negato":"Segnale GPS non disponibile");if(A)A.q="assente"}
 function awatch(){if(A.wid==null&&navigator.geolocation)A.wid=navigator.geolocation.watchPosition(onPos,perr,{enableHighAccuracy:true,maximumAge:1000,timeout:30000})}
 function onPos(p){if(!A||!A.run)return;const c=p.coords,pt=[c.latitude,c.longitude,p.timestamp];A.q=Math.round(c.accuracy)+" m";A.vc=c.speed>0?c.speed*3.6:0;
@@ -277,22 +278,32 @@ function liveCard(){return`<h2>Registra con GPS</h2><div class="g" style="paddin
 /* ---------- TIMER ---------- */
 const T={total:db.timers[0],left:db.timers[0],end:0,run:false,iv:null},R=104,C=2*Math.PI*R;
 const rem=()=>T.run?Math.max(0,(T.end-Date.now())/1000):T.left;
-function resume(){try{if("Notification"in window&&Notification.permission==="default")Notification.requestPermission().then(sched)}catch(e){}if(T.left<=0)T.left=T.total;T.end=Date.now()+T.left*1000;T.run=true;clearInterval(T.iv);T.iv=setInterval(tick,200);sync()}
+function resume(){try{if(pipOK()){pipInit();msInit()}}catch(e){}try{if("Notification"in window&&Notification.permission==="default")Notification.requestPermission().then(sched)}catch(e){}if(T.left<=0)T.left=T.total;T.end=Date.now()+T.left*1000;T.run=true;clearInterval(T.iv);T.iv=setInterval(tick,200);sync()}
 function pause(){T.left=rem();T.run=false;clearInterval(T.iv);sync()}
 function reset(){T.run=false;clearInterval(T.iv);T.left=T.total;sync()}
 function start(s){T.total=s;T.left=s;resume()}
 function addT(s){if(!T.run&&T.left<=0||T.total===0){start(s);return}if(T.run)T.end+=s*1000;else T.left+=s;T.total+=s;sync()}
-function tick(){const r=rem();if(r<=0){done();return}paint(r)}
-function paint(r){const c=$("#rc"),t=$("#rt"),m=$("#mt");if(c)c.style.strokeDashoffset=C*(1-(T.total?r/T.total:0));if(t)t.textContent=fmt(r);if(m)m.textContent=fmt(r)}
-function sync(){sched();mini();if(tab==="timer")render(true);else paint(rem())}
+function tick(){const r=rem();if(r<=0){if(Date.now()-T.end>8000){T.run=false;T.left=0;clearInterval(T.iv);sync()}else done();return}paint(r)}
+function paint(r){pipDraw();const c=$("#rc"),t=$("#rt"),m=$("#mt");if(c)c.style.strokeDashoffset=C*(1-(T.total?r/T.total:0));if(t)t.textContent=fmt(r);if(m)m.textContent=fmt(r)}
+function sync(){sched();pipSync();mini();if(tab==="timer")render(true);else paint(rem())}
 const SND={bip:{n:"Bip",w:"sine",p:[[880,0,.18],[880,.28,.18],[880,.56,.18]]},campanello:{n:"Campanello",w:"triangle",p:[[1318,0,.5],[1760,.15,.6],[2093,.3,.8]]},digitale:{n:"Digitale",w:"square",p:[[1200,0,.09],[1600,.12,.09],[1200,.24,.09],[1600,.36,.09],[1200,.48,.09],[1600,.6,.09]]},gong:{n:"Gong",w:"sine",p:[[196,0,1.5],[392,0,1.1],[587,0,.9]]},allarme:{n:"Allarme",w:"sawtooth",p:[[740,0,.2],[988,.22,.2],[740,.44,.2],[988,.66,.2]]},muto:{n:"Silenzioso",w:"sine",p:[]}};
 function beep(k){const s=db.snd,P=SND[k||s.t]||SND.bip;if(!P.p.length||!s.v)return;try{const a=new(window.AudioContext||window.webkitAudioContext)(),m=s.v/100*(P.w==="sine"||P.w==="triangle"?.8:.28);P.p.forEach(([f,t,d])=>{const o=a.createOscillator(),g=a.createGain(),T=a.currentTime+t;o.type=P.w;o.frequency.value=f;o.connect(g);g.connect(a.destination);g.gain.setValueAtTime(.0001,T);g.gain.exponentialRampToValueAtTime(Math.max(m,.0002),T+.02);g.gain.exponentialRampToValueAtTime(.0001,T+d);o.start(T);o.stop(T+d+.05)})}catch(e){}}
 function tap(n){try{if(db.snd.vib>0&&navigator.vibrate)navigator.vibrate(n||14)}catch(e){}}
 function vib(){const d=db.snd.vib;try{if(d>0&&navigator.vibrate)navigator.vibrate([d,Math.round(d/3),d])}catch(e){}}
 function nopts(){const s=db.snd,v=s.vib>0;return{body:"Recupero finito: tocca a te!",silent:!v&&(s.t==="muto"||!s.v),vibrate:v?[s.vib,Math.round(s.vib/3),s.vib,Math.round(s.vib/3),s.vib]:[]}}
 function swp(m){try{const c=navigator.serviceWorker&&navigator.serviceWorker.controller;if(c){c.postMessage(m);return true}}catch(e){}return false}
-function ntf(){try{if(!("Notification"in window)||Notification.permission!=="granted")return;if(!swp({type:"TIMER_DONE",at:T.end,o:nopts()}))new Notification("GYMER",nopts())}catch(e){}}
-function sched(){try{if(T.run&&"Notification"in window&&Notification.permission==="granted")swp({type:"TIMER_SET",at:T.end,o:nopts()});else swp({type:"TIMER_CANCEL"})}catch(e){}}
+function ntf(){try{if(!("Notification"in window)||Notification.permission!=="granted")return;if(!swp({type:"TD",at:T.end,o:nopts()}))new Notification("GYMER",nopts())}catch(e){}}
+function sched(){T.u=Date.now();try{if("Notification"in window&&Notification.permission==="granted")swp({type:"T",run:T.run,end:T.end,left:T.left,total:T.total,u:T.u,o:nopts()})}catch(e){}}
+function applyRemote(m){if(!m||!(m.u>(T.u||0)))return;T.run=!!m.run;T.end=m.end;T.left=m.left;T.total=m.total;T.u=m.u;clearInterval(T.iv);if(T.run)T.iv=setInterval(tick,200);mini();if(tab==="timer")render(true);else paint(rem());pipDraw()}
+/* ---- timer fluttuante (Picture-in-Picture) + media session ---- */
+let PV=null,PX=null;
+function pipOK(){try{return !!(document.pictureInPictureEnabled&&HTMLVideoElement.prototype.requestPictureInPicture)}catch(e){return false}}
+function pipInit(){if(PV||!pipOK())return;const c=document.createElement("canvas");c.width=480;c.height=270;PX=c.getContext("2d");PV=document.createElement("video");PV.muted=true;PV.setAttribute("playsinline","");PV.srcObject=c.captureStream(10);PV.style.cssText="position:fixed;left:0;top:0;width:2px;height:2px;opacity:.01;pointer-events:none";document.body.appendChild(PV);PV.addEventListener("leavepictureinpicture",()=>{if(tab==="timer")render(true)});PV.addEventListener("enterpictureinpicture",()=>{if(tab==="timer")render(true)});pipDraw()}
+function pipDraw(){if(!PX)return;const r=rem(),w=480,h=270,x=PX,cs=getComputedStyle(document.documentElement),a=cs.getPropertyValue("--ac").trim()||"#8b7bff",b=cs.getPropertyValue("--ac2").trim()||"#27d7ff",cx=w/2,cy=h/2,rad=104,f=T.total?Math.min(1,r/T.total):0;x.fillStyle="#0b0b16";x.fillRect(0,0,w,h);x.lineWidth=14;x.lineCap="round";x.strokeStyle="rgba(255,255,255,.14)";x.beginPath();x.arc(cx,cy,rad,0,7);x.stroke();const g=x.createLinearGradient(0,0,w,h);g.addColorStop(0,a);g.addColorStop(1,b);x.strokeStyle=g;if(f>0){x.beginPath();x.arc(cx,cy,rad,-Math.PI/2,-Math.PI/2+2*Math.PI*f);x.stroke()}x.fillStyle="#fff";x.textAlign="center";x.font="800 70px -apple-system,Segoe UI,Roboto,sans-serif";x.fillText(fmt(r),cx,cy+20);x.font="600 20px -apple-system,Segoe UI,Roboto,sans-serif";x.fillStyle="rgba(255,255,255,.65)";x.fillText(T.run?"Recupero":r<=0?"Finito!":r<T.total?"In pausa":"Pronto",cx,cy+54)}
+function msInit(){if(!("mediaSession"in navigator))return;const h=(n,f)=>{try{navigator.mediaSession.setActionHandler(n,f)}catch(e){}};h("play",()=>{if(!T.run)resume()});h("pause",()=>{if(T.run)pause()});h("previoustrack",reset);h("nexttrack",()=>addT(30));h("enterpictureinpicture",()=>{pipStart()});try{navigator.mediaSession.metadata=new MediaMetadata({title:"GYMER · Timer",artist:"Recupero",artwork:[{src:"/icons/icon-512.png",sizes:"512x512",type:"image/png"}]})}catch(e){}}
+async function pipStart(){if(!pipOK())return toast("Timer fluttuante non supportato qui");try{pipInit();msInit();pipDraw();await PV.play();await PV.requestPictureInPicture()}catch(e){toast("Impossibile aprire il timer fluttuante")}}
+async function pipToggle(){if(document.pictureInPictureElement){try{await document.exitPictureInPicture()}catch(e){}}else await pipStart()}
+function pipSync(){if(!PV)return;try{if(T.run)PV.play().catch(()=>{});else if(!document.pictureInPictureElement)PV.pause();if("mediaSession"in navigator)navigator.mediaSession.playbackState=T.run?"playing":"paused"}catch(e){}pipDraw()}
 function done(){T.run=false;T.left=0;clearInterval(T.iv);beep();vib();ntf();sync()}
 function mini(){const m=$("#mini"),show=tab!=="timer"&&(T.run||(T.left>0&&T.left<T.total));m.classList.toggle("show",show);
  if(show)m.innerHTML=`${I("clock")}<span id="mt">${fmt(rem())}</span><button class="gb rd sm" data-a="${T.run?"pause":"play"}">${I(T.run?"pause":"play")}</button>`}
@@ -337,7 +348,7 @@ function vTrain(){
  return`<h1><span>Allenamento</span><button class="gb sm" data-a="addg">${I("plus")}</button><button class="gb sm ${EM?"on":""}" data-a="em">${I(EM?"check":"edit")}</button></h1><div class="grid fill">${db.groups.map((g,i)=>`<div class="g card" data-a="${EM?"eg":"grp"}" data-v="${g.id}">${EM?`<button class="gb sm" data-a="dg" data-v="${g.id}" style="position:absolute;top:10px;right:10px">${I("trash")}</button>`:""}<div class="badge" style="background:${grad(gcol(g,i))}">${I("dumbbell")}</div><div><b style="font-size:17px">${esc(g.name)}</b><div class="mu">${EM?"Tocca per modificare":g.ex.length+" esercizi"}</div></div></div>`).join("")}</div>`}
 function vTimer(){
  const r=rem(),st=T.run?"In corso":r<=0?"Finito":r<T.total?"In pausa":"Pronto";
- return`<div class="tmw"><h1><span>Timer</span></h1>
+ return`<div class="tmw"><h1><span>Timer</span>${pipOK()?`<button class="gb sm ${document.pictureInPictureElement?"on":""}" data-a="pip">${I("pip")}</button>`:""}</h1>
  <div class="rg"><svg viewBox="0 0 240 240"><defs><linearGradient id="tg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="var(--ac)"/><stop offset="1" stop-color="var(--ac2)"/></linearGradient></defs><circle cx="120" cy="120" r="${R}" fill="none" stroke="var(--gbd)" stroke-width="12"/><circle id="rc" cx="120" cy="120" r="${R}" fill="none" stroke="url(#tg)" stroke-width="12" stroke-linecap="round" stroke-dasharray="${C}" stroke-dashoffset="${C*(1-(T.total?r/T.total:0))}" style="transition:stroke-dashoffset .25s linear"/></svg><div class="rc"><b id="rt">${fmt(r)}</b><span class="mu">${st}</span></div></div>
  <div class="ctl"><button class="gb rd" data-a="reset">${I("reset")}</button><button class="gb on big" data-a="${T.run?"pause":"play"}">${I(T.run?"pause":"play")}</button><button class="gb rd" data-a="add" data-v="30"><b>+30</b></button></div>
  <h2>Tempi rapidi</h2><div class="pr">${db.timers.map(s=>`<button class="gb" data-a="start" data-v="${s}">${lbl(s)}</button>`).join("")}</div>
@@ -409,7 +420,7 @@ document.addEventListener("click",ev=>{
  else if(a==="th"){db.theme=v;save();render(true)}
  else if(a==="tset")picker("Preset "+(+v+1),db.timers[v],s=>{db.timers[v]=s;save();if(!T.run&&T.left===T.total&&v==0){T.total=T.left=s}render(true)});
  else if(a==="notif"){beep();try{Notification.requestPermission().then(p=>toast(p==="granted"?"Notifiche abilitate":"Notifiche non concesse"))}catch(x){toast("Notifiche non supportate qui")}}
- else if(a==="play")resume();else if(a==="pause")pause();else if(a==="reset")reset();
+ else if(a==="pip")pipToggle();else if(a==="play")resume();else if(a==="pause")pause();else if(a==="reset")reset();
  else if(a==="start")start(+v);else if(a==="add")addT(+v);
  else if(a==="cust")picker("Timer personalizzato",T.total||60,s=>start(s));
  else if(a==="exp"){const j=JSON.stringify(db,null,1);$("#bk").value=j;try{const u=URL.createObjectURL(new Blob([j],{type:"application/json"})),l=document.createElement("a");l.href=u;l.download="gymer-backup.json";l.click()}catch(x){}}
@@ -421,7 +432,7 @@ document.addEventListener("input",e=>{const i=e.target;if(i.type==="number"){con
 document.addEventListener("input",e=>{const i=e.target;if(i.id==="rpe")$("#rpl").textContent=RP(+i.value);if(i.id==="sv"){db.snd.v=+i.value;$("#svl").textContent=i.value+"%"}if(i.id==="sd"){db.snd.vib=+i.value;$("#sdl").textContent=+i.value>0?i.value+" ms":"Off"}});
 document.addEventListener("change",e=>{const i=e.target;if(i.id==="sv"){save();beep()}if(i.id==="sd"){save();vib()}});
 render();aupd();
-if("serviceWorker"in navigator&&location.protocol==="https:")window.addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}));
+if("serviceWorker"in navigator&&location.protocol==="https:"){navigator.serviceWorker.addEventListener("message",e=>{const m=e.data||{};if(m.type==="TS")applyRemote(m)});window.addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").then(()=>navigator.serviceWorker.ready).then(()=>swp({type:"TG"})).catch(()=>{}))}
 </script>
 </body>
 </html>
