@@ -1,5 +1,5 @@
 /* GYMER service worker: offline shell + notifiche timer */
-const CACHE = "gymer-v7";
+const CACHE = "gymer-v8";
 const SHELL = ["/", "/manifest.webmanifest", "/icons/icon-192.png", "/icons/icon-512.png"];
 
 self.addEventListener("install", (e) => {
@@ -49,10 +49,11 @@ function stopLoop() {
 }
 function showRun() {
   if (!S) return Promise.resolve();
+  if (!S.hid) return closeRun();            // app in primo piano: nessuna notifica
   const run = S.run, l = left();
   return self.registration.showNotification(run ? "Recupero in corso" : "Recupero in pausa", {
-    body: fm(l) + (run ? " rimanenti · fine alle " + hm(S.end) : " rimanenti"),
-    tag: TAG, renotify: false, silent: true, requireInteraction: true,
+    body: run ? "Finisce alle " + hm(S.end) : "In pausa · " + fm(l) + " rimanenti",
+    tag: TAG, renotify: false, silent: true, vibrate: [], requireInteraction: true,
     icon: ICON, badge: ICON,
     data: { k: run ? "run" : "pause", st: st(), o: S.o },
     actions: run
@@ -71,16 +72,17 @@ function startLoop() {
   stopLoop();
   return new Promise((res) => {
     loopRes = res;
+    let shownRun = false;
     const step = () => {
       if (!S || !S.run) { stopLoop(); return; }
       const l = left();
       if (l <= 0) {
         S.run = false; S.left = 0;
-        showDone(S.end, S.o).then(() => stopLoop());
+        (S.hid ? showDone(S.end, S.o) : Promise.resolve()).then(() => stopLoop());
         return;
       }
-      showRun();
-      loopT = setTimeout(step, Math.min(10000, l * 1000 + 30));
+      if (!shownRun) { shownRun = true; showRun(); }
+      loopT = setTimeout(step, l * 1000 + 30);
     };
     step();
   });
@@ -107,17 +109,19 @@ self.addEventListener("message", (e) => {
   const d = e.data || {};
   if (d.type === "T") {
     if (S && S.u && d.u < S.u) return;
-    S = { run: d.run, end: d.end, left: d.left, total: d.total, u: d.u, o: d.o };
-    if (S.run) e.waitUntil(startLoop());
+    S = { run: d.run, end: d.end, left: d.left, total: d.total, u: d.u, o: d.o, hid: !!d.hid };
+    if (S.run) e.waitUntil(S.hid ? startLoop() : closeRun().then(startLoop));
     else {
       stopLoop();
       if (S.left >= S.total - 0.05) e.waitUntil(closeRun());       // reset: toglie la notifica
-      else if (S.left > 0) e.waitUntil(showRun());                  // pausa
+      else if (S.left > 0) e.waitUntil(showRun());                  // pausa (o chiude se in primo piano)
     }
   } else if (d.type === "TD") {
     stopLoop();
     if (S) { S.run = false; S.left = 0; }
     e.waitUntil(showDone(d.at, d.o));
+  } else if (d.type === "V") {
+    if (S) { S.hid = !!d.hid; e.waitUntil(S.hid ? (S.run ? startLoop() : showRun()) : closeRun()); }
   } else if (d.type === "TG") {
     e.waitUntil(restore().then(() => { if (S && e.source) e.source.postMessage(Object.assign({ type: "TS" }, st())); }));
   }
@@ -132,7 +136,7 @@ self.addEventListener("notificationclick", (e) => {
     else if (a === "resume") { S.end = now + S.left * 1000; S.run = true; }
     else if (a === "add") { if (S.run) S.end += 30000; else S.left += 30; S.total += 30; }
     else if (a === "stop") { S.run = false; S.left = S.total; }
-    S.u = now;
+    S.u = now; S.hid = true;
     n.close();
     e.waitUntil(broadcast().then(() => {
       if (a === "stop") { stopLoop(); return; }
