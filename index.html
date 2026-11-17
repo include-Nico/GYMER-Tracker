@@ -94,6 +94,12 @@ label{font-size:12px;color:var(--mu);display:block;margin-bottom:5px;text-align:
 .sw8{display:flex;gap:12px;flex-wrap:wrap;justify-content:center;margin-bottom:18px}
 .sw{width:38px;height:38px;border-radius:50%;border:2px solid var(--gbd);cursor:pointer;padding:0;box-shadow:inset 0 1px 2px rgba(255,255,255,.55);transition:transform .2s}
 .sw.sel{transform:scale(1.15);outline:3px solid var(--tx);outline-offset:2px}
+.swgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.switem{display:flex;flex-direction:column;align-items:center;gap:6px;padding:10px 4px;border-radius:16px;background:var(--g2);border:1px solid transparent;cursor:pointer;font:inherit;color:var(--tx);font-size:11px;font-weight:600;transition:transform .18s,border-color .2s,background .2s}
+.switem:active{transform:scale(.94)}
+.switem.sel{border-color:var(--tx);background:var(--g1)}
+.switem i{width:34px;height:34px;border-radius:50%;display:block;border:2px solid var(--gbd);box-shadow:inset 0 1px 2px rgba(255,255,255,.55)}
+.swdot{width:20px;height:20px;border-radius:50%;border:1.5px solid var(--gbd);flex:none;box-shadow:inset 0 1px 1px rgba(255,255,255,.5)}
 
 #main.xf{opacity:0;transform:translateX(-28px)}#main.xb{opacity:0;transform:translateX(28px)}#main.xt{opacity:0;transform:scale(.97)}
 #main.e>*{animation:rise .55s cubic-bezier(.2,.8,.2,1) both}#main.e.pf>*{--dx:34px}#main.e.pb>*{--dx:-34px}#main.e>*:nth-child(2){animation-delay:0.045s}#main.e>*:nth-child(3){animation-delay:0.090s}#main.e>*:nth-child(4){animation-delay:0.135s}#main.e>*:nth-child(5){animation-delay:0.180s}#main.e>*:nth-child(6){animation-delay:0.225s}#main.e>*:nth-child(7){animation-delay:0.270s}#main.e>*:nth-child(8){animation-delay:0.315s}#main.e>*:nth-child(9){animation-delay:0.360s}
@@ -179,13 +185,31 @@ db=db||{groups:Object.keys(SEED).map(n=>({id:uid(),name:n,ex:SEED[n].map(x=>({id
 db.theme=db.theme||"dark";db.metric=db.metric||"k";if(!db.timers||db.timers.length!==3)db.timers=[60,90,180];
 db.prof=db.prof||{h:0,w:[]};db.snd=Object.assign({t:"bip",v:80,vib:600},db.snd||{});
 const save=()=>{try{localStorage.setItem("gymer",JSON.stringify(db))}catch(e){}};
-let tab="train",V={},PE=null,PG=null,EM=0,DIR="t",RT=0,BUSY=0,OPEN={prof:0,bk:0,det:0,psel:0},LK={},LIM={s:99,r:999,k:999,m:3600,km:500,lv:99,ph:260,pw:400};
+let tab="train",V={},PE=null,PG=null,EM=0,DIR="t",RT=0,BUSY=0,OPEN={prof:0,bk:0,det:0,psel:0,col:0},LK={},LIM={s:99,r:999,k:999,m:3600,km:500,lv:99,ph:260,pw:400};
 const G=()=>db.groups.find(g=>g.id===V.g),E=()=>G()&&G().ex.find(e=>e.id===V.e);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const fd=t=>new Date(t).toLocaleDateString("it-IT",{day:"2-digit",month:"short"});
 const fmt=s=>{const c=Math.ceil(s);return Math.floor(c/60)+":"+String(c%60).padStart(2,"0")};
 const lbl=s=>s<60?s+" s":s%60?Math.floor(s/60)+" min "+s%60+"s":s/60+" min";
-const PAL=["#8b7bff","#27d7ff","#ff5fa2","#34d399","#fbbf24","#fb7185","#60a5fa","#f97316"],ACC=[["#8b7bff","#27d7ff"],["#ff5fa2","#fbbf24"],["#34d399","#27d7ff"],["#f97316","#fb7185"],["#60a5fa","#8b7bff"]];
+const PAL=["#8b7bff","#27d7ff","#ff5fa2","#34d399","#fbbf24","#fb7185","#60a5fa","#f97316"];
+const ACC=[
+ ["#8b7bff","#27d7ff","Viola"],
+ ["#ff5fa2","#fbbf24","Rosa"],
+ ["#34d399","#27d7ff","Smeraldo"],
+ ["#f97316","#fb7185","Arancio"],
+ ["#60a5fa","#8b7bff","Blu"],
+ ["#ef4444","#fb7185","Rubino"],
+ ["#84cc16","#10b981","Lime"],
+ ["#06b6d4","#3b82f6","Azzurro"],
+ ["#d946ef","#8b5cf6","Fucsia"],
+ ["#eab308","#f97316","Oro"],
+ ["#14b8a6","#2dd4bf","Menta"],
+ ["#f43f5e","#ec4899","Tramonto"],
+ ["#3b82f6","#22d3ee","Elettrico"],
+ ["#fb7185","#fdba74","Corallo"],
+ ["#a78bfa","#f472b6","Lavanda"],
+ ["#94a3b8","#cbd5e1","Argento"]
+];
 const grad=c=>`linear-gradient(135deg,${c},color-mix(in srgb,${c} 55%,#000))`,gcol=(g,i)=>g.c||PAL[i%PAL.length];
 const bwv=()=>{const w=db.prof.w;return w.length?w[w.length-1].v:0};
 function cl(o){if(!o||o._c)return;o._c=1;o.style.pointerEvents="none";o.classList.add("out");setTimeout(()=>o.remove(),330)}
@@ -377,7 +401,7 @@ function vProg(){
  if(!all.length)return`<h1><span>Progressioni</span></h1><div class="ex">Aggiungi un esercizio per iniziare</div>`;
  const cur=all.find(x=>x.e.id===PE)||all.find(x=>(x.e.logs||[]).length)||all[0];
  const e=cur.e,t=ty(e),ls=e.logs||[];
- const selG=db.groups.find(g=>g.id===PG)||cur.g,selGi=db.groups.indexOf(selG);
+ const selG=db.groups.find(g=>g.id===PG)||cur.g;
  const M=t.M.find(x=>x[0]===db.metric)||t.M[0],pts=series(e,M[0]);
  const pr=ls.length?Math.max(...ls.map(t.one)):0,ses=new Set(ls.map(x=>new Date(x.d).toDateString())).size,l=last(e);
  const delta=pts.length>1?+(pts[pts.length-1].y-pts[0].y).toFixed(1):0;
@@ -415,13 +439,14 @@ function vProg(){
   <div class="g gb" style="border-radius:18px"><b>${ses}</b><small>Sessioni</small></div>
  </div>
  <div class="g detcard">${detRows}</div></div>`}
-function vSet(){const P=db.prof,w=bwv(),bmi=P.h&&w?w/Math.pow(P.h/100,2):0;return`<h1><span>Profilo</span></h1>
+function vSet(){const P=db.prof,w=bwv(),bmi=P.h&&w?w/Math.pow(P.h/100,2):0,acIdx=(db.ac&&ACC[db.ac])?db.ac:0,curAc=ACC[acIdx];return`<h1><span>Profilo</span></h1>
  <button class="gb acc ${OPEN.prof?"open":""}" data-a="tg" data-v="prof"><span class="row" style="gap:10px">${I("user")}<b>Dati fisici</b></span><span class="mu sp" style="text-align:right;font-weight:500">${w?w+" kg":"—"} · ${P.h?P.h+" cm":"—"}</span>${I("chev","cv")}</button>
  <div class="col ${OPEN.prof?"open":""}" id="c-prof"><div><div class="g" style="padding:16px;margin-top:12px"><div class="f2"><div><label>Altezza (cm)</label><input id="ph" type="number" inputmode="numeric" value="${P.h||""}" placeholder="175"></div><div><label>Peso (kg)</label><input id="pw" type="number" inputmode="decimal" step="0.1" value="${w||""}" placeholder="70"></div></div><button class="gb on" data-a="prof" style="width:100%">${I("check")} Salva misure</button></div>
  <div class="pr" style="margin-top:12px"><div class="g gb" style="border-radius:18px"><b>${w?w+" kg":"—"}</b><small>Peso</small></div><div class="g gb" style="border-radius:18px"><b>${P.h?P.h+" cm":"—"}</b><small>Altezza</small></div><div class="g gb" style="border-radius:18px"><b>${bmi?bmi.toFixed(1):"—"}</b><small>BMI</small></div></div>
  ${P.w.length>1?`<div class="g" style="padding:14px 10px 6px;margin-bottom:6px"><div class="mu" style="margin:0 8px 6px">Andamento peso (kg)</div>${chart(P.w.map(x=>({t:new Date(x.d),y:x.v})),1)}</div>`:`<div class="mu" style="text-align:center">Salva il peso in giorni diversi per vedere l’andamento</div>`}</div></div>
  <h1 style="margin-top:28px"><span>Impostazioni</span></h1>
- <h2>Colore app</h2><div class="sw8" style="justify-content:flex-start">${ACC.map((c,i)=>`<button class="sw ${(db.ac||0)===i?"sel":""}" data-a="acc" data-v="${i}" style="background:linear-gradient(135deg,${c[0]},${c[1]})"></button>`).join("")}</div>
+ <button class="gb acc ${OPEN.col?"open":""}" data-a="tg" data-v="col"><span class="row" style="gap:10px">${I("palette")}<b>Colore app</b></span><span class="row sp" style="justify-content:flex-end;gap:8px"><span class="mu" style="font-weight:500">${curAc[2]}</span><i class="swdot" style="background:linear-gradient(135deg,${curAc[0]},${curAc[1]})"></i></span>${I("chev","cv")}</button>
+ <div class="col ${OPEN.col?"open":""}" id="c-col"><div><div class="g" style="padding:14px;margin-top:12px"><div class="swgrid">${ACC.map((c,i)=>`<button class="switem ${acIdx===i?"sel":""}" data-a="acc" data-v="${i}"><i style="background:linear-gradient(135deg,${c[0]},${c[1]})"></i><span>${c[2]}</span></button>`).join("")}</div></div></div></div>
  <h2>Tema</h2><div class="seg"><button class="gb ${db.theme==="dark"?"on":""}" data-a="th" data-v="dark">${I("moon")} Scuro</button><button class="gb ${db.theme==="light"?"on":""}" data-a="th" data-v="light">${I("sun")} Chiaro</button></div>
  <h2>Tempi rapidi predefiniti</h2>${db.timers.map((s,i)=>`<div class="g item row" data-a="tset" data-v="${i}" style="cursor:pointer">${I("clock")}<span class="sp">Preset ${i+1}</span><b>${lbl(s)}</b></div>`).join("")}
  <h2>Suoni e vibrazione</h2><div class="g" style="padding:16px"><div class="snd">${Object.keys(SND).map(k=>`<button class="gb ${db.snd.t===k?"on":""}" data-a="snd" data-v="${k}">${SND[k].n}</button>`).join("")}</div>
@@ -434,7 +459,7 @@ function vSet(){const P=db.prof,w=bwv(),bmi=P.h&&w?w/Math.pow(P.h/100,2):0;retur
  <div class="col ${OPEN.bk?"open":""}" id="c-bk"><div><div class="g" style="padding:14px;margin-top:12px"><textarea id="bk" rows="4" placeholder="Il JSON appare qui. Incolla qui per importare."></textarea><div class="seg" style="margin-top:10px"><button class="gb" data-a="exp">${I("down")} Esporta</button><button class="gb on" data-a="imp">${I("up")} Importa</button></div><input id="fi" type="file" accept=".json,application/json" style="margin-top:10px;text-align:left"></div></div></div>`}
 const TABS=[["train","dumbbell","Allena"],["timer","timer","Timer"],["prog","trend","Progressi"],["set","user","Profilo"]];
 function render(keep){
- document.documentElement.dataset.theme=db.theme;{const A=ACC[db.ac||0],s=document.documentElement.style;s.setProperty("--ac",A[0]);s.setProperty("--ac2",A[1])}
+ document.documentElement.dataset.theme=db.theme;{const A=ACC[(db.ac&&ACC[db.ac])?db.ac:0],s=document.documentElement.style;s.setProperty("--ac",A[0]);s.setProperty("--ac2",A[1])}
  const m=$("#main");m.innerHTML={train:vTrain,timer:vTimer,prog:vProg,set:vSet}[tab]();
  if(!keep){m.className="e p"+DIR;clearTimeout(RT);RT=setTimeout(()=>{m.className=""},1000)}
  navUpd();mini();
@@ -444,7 +469,7 @@ const SLOW={log:1,prof:1,astart:1,aend:1,imp:1,exp:1};
 document.addEventListener("click",ev=>{
  const el=ev.target.closest("[data-a]");if(!el)return;const a=el.dataset.a,v=el.dataset.v,g=G(),e=E();if(a!=="log"&&a!=="same")tap();
  if(SLOW[a]){const n=Date.now();if(n-(LK[a]||0)<900)return;LK[a]=n}
- if(a==="tab"){if(v===tab&&!(v==="train"&&(V.g||V.e)))return;const ni=TABS.findIndex(t=>t[0]===v),oi=TABS.findIndex(t=>t[0]===tab);goto(ni>=oi?"f":"b",()=>{tab=v;EM=0;OPEN.prof=OPEN.bk=OPEN.det=OPEN.psel=0;if(v==="train")V={}})}
+ if(a==="tab"){if(v===tab&&!(v==="train"&&(V.g||V.e)))return;const ni=TABS.findIndex(t=>t[0]===v),oi=TABS.findIndex(t=>t[0]===tab);goto(ni>=oi?"f":"b",()=>{tab=v;EM=0;OPEN.prof=OPEN.bk=OPEN.det=OPEN.psel=OPEN.col=0;if(v==="train")V={}})}
  else if(a==="grp")goto("f",()=>{EM=0;V={g:v}});else if(a==="ex")goto("f",()=>{OPEN.det=0;V={g:V.g,e:v}});
  else if(a==="back")goto("b",()=>{EM=0;V=V.e?{g:V.g}:{}});
  else if(a==="addg"){if(db.groups.length>=24)toast("Limite di 24 gruppi raggiunto");else gsheet(null)}else if(a==="eg")gsheet(db.groups.find(x=>x.id===v));
