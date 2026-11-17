@@ -112,6 +112,25 @@ input,textarea{transition:border-color .25s,box-shadow .25s}input:focus,textarea
 body{transition:background-color .4s,color .4s}.bg i{transition:opacity .6s}
 .snd{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}.snd .gb{padding:11px 4px;font-size:13px}.rr{margin-bottom:14px}input[type=range]{padding:0;height:32px;accent-color:var(--ac);background:none;border:0;box-shadow:none!important}
 .toast{position:fixed;left:50%;top:calc(16px + env(safe-area-inset-top,0px));transform:translateX(-50%);z-index:50;padding:12px 18px;border-radius:20px;font-weight:600;white-space:nowrap;animation:fade .3s}
+
+/* Selettore gerarchico Progressi & Card dettagli */
+.psel{width:100%;justify-content:space-between;padding:13px 16px;border-radius:22px;text-align:left}
+.psel .cv{transition:transform .4s cubic-bezier(.3,1.3,.5,1);flex:none}
+.psel.open .cv{transform:rotate(180deg)}
+.pdrop{padding:14px;margin-top:10px;border-radius:24px}
+.gchips{display:flex;gap:7px;overflow-x:auto;padding-bottom:10px;margin-bottom:10px;border-bottom:1px solid var(--gbd);scrollbar-width:none}
+.gchips::-webkit-scrollbar{display:none}
+.gchips .gb{white-space:nowrap;padding:7px 12px;font-size:13px;border-radius:14px}
+.gdot{width:8px;height:8px;border-radius:50%;flex:none}
+.exlist{display:flex;flex-direction:column;gap:6px;max-height:230px;overflow-y:auto;padding-right:2px}
+.exopt{width:100%;justify-content:space-between;padding:10px 12px;border-radius:16px;font-size:14px;text-align:left}
+.exopt .ic{width:17px;height:17px}
+.detcard{padding:4px 16px;border-radius:22px}
+.detrow{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-bottom:1px solid color-mix(in srgb,var(--gbd) 55%,transparent)}
+.detrow:last-child{border-bottom:none}
+.delta{font-size:12px;font-weight:700;padding:3px 9px;border-radius:10px;background:var(--g2);border:1px solid var(--gbd)}
+.delta.pos{color:#34d399;border-color:rgba(52,211,153,.35)}
+.delta.neg{color:#fb7185;border-color:rgba(251,113,133,.35)}
 </style>
 </head>
 <body>
@@ -160,7 +179,7 @@ db=db||{groups:Object.keys(SEED).map(n=>({id:uid(),name:n,ex:SEED[n].map(x=>({id
 db.theme=db.theme||"dark";db.metric=db.metric||"k";if(!db.timers||db.timers.length!==3)db.timers=[60,90,180];
 db.prof=db.prof||{h:0,w:[]};db.snd=Object.assign({t:"bip",v:80,vib:600},db.snd||{});
 const save=()=>{try{localStorage.setItem("gymer",JSON.stringify(db))}catch(e){}};
-let tab="train",V={},PE=null,EM=0,DIR="t",RT=0,BUSY=0,OPEN={prof:0,bk:0,det:0},LK={},LIM={s:99,r:999,k:999,m:3600,km:500,lv:99,ph:260,pw:400};
+let tab="train",V={},PE=null,PG=null,EM=0,DIR="t",RT=0,BUSY=0,OPEN={prof:0,bk:0,det:0,psel:0},LK={},LIM={s:99,r:999,k:999,m:3600,km:500,lv:99,ph:260,pw:400};
 const G=()=>db.groups.find(g=>g.id===V.g),E=()=>G()&&G().ex.find(e=>e.id===V.e);
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 const fd=t=>new Date(t).toLocaleDateString("it-IT",{day:"2-digit",month:"short"});
@@ -354,17 +373,48 @@ function vTimer(){
  <h2>Tempi rapidi</h2><div class="pr">${db.timers.map(s=>`<button class="gb" data-a="start" data-v="${s}">${lbl(s)}</button>`).join("")}</div>
  <button class="gb" data-a="cust" style="width:100%">${I("clock")} Personalizzato</button></div>`}
 function vProg(){
- const all=[];db.groups.forEach(g=>g.ex.forEach(x=>all.push({g,e:x})));
+ const all=[];db.groups.forEach((g,gi)=>g.ex.forEach(x=>all.push({g,gi,e:x})));
  if(!all.length)return`<h1><span>Progressioni</span></h1><div class="ex">Aggiungi un esercizio per iniziare</div>`;
- const cur=all.find(x=>x.e.id===PE)||all.find(x=>(x.e.logs||[]).length)||all[0],e=cur.e,t=ty(e),ls=e.logs||[];
- const M=t.M.find(x=>x[0]===db.metric)||t.M[0],pts=series(e,M[0]),pr=ls.length?Math.max(...ls.map(t.one)):0,ses=new Set(ls.map(x=>new Date(x.d).toDateString())).size,l=last(e);
+ const cur=all.find(x=>x.e.id===PE)||all.find(x=>(x.e.logs||[]).length)||all[0];
+ const e=cur.e,t=ty(e),ls=e.logs||[];
+ const selG=db.groups.find(g=>g.id===PG)||cur.g,selGi=db.groups.indexOf(selG);
+ const M=t.M.find(x=>x[0]===db.metric)||t.M[0],pts=series(e,M[0]);
+ const pr=ls.length?Math.max(...ls.map(t.one)):0,ses=new Set(ls.map(x=>new Date(x.d).toDateString())).size,l=last(e);
+ const delta=pts.length>1?+(pts[pts.length-1].y-pts[0].y).toFixed(1):0;
+ const detRows=[
+  `<div class="detrow"><span class="mu">${t.tot[0]}</span><b>${ls.length?t.tot[1](ls):"—"}</b></div>`,
+  (e.t||"peso")==="peso"&&ls.some(x=>e1(x)>0)?`<div class="detrow"><span class="mu">1RM stimato (miglior serie)</span><b>${+Math.max(...ls.map(e1)).toFixed(1)} kg</b></div>`:"",
+  ls.some(x=>x.pr)?`<div class="detrow"><span class="mu">Record battuti</span><b>${ls.filter(x=>x.pr).length}</b></div>`:"",
+  bwv()&&pr&&(e.t||"peso")==="peso"?`<div class="detrow"><span class="mu">Record / peso corporeo</span><b>${(pr/bwv()).toFixed(2)}×</b></div>`:""
+ ].filter(Boolean).join("");
  return`<div class="fillp"><h1><span>Progressioni</span></h1>
- <div class="chips">${all.map(x=>`<button class="gb ${x.e.id===e.id?"on":""}" data-a="pe" data-v="${x.e.id}">${I(ty(x.e).i)}${esc(x.e.name)}</button>`).join("")}</div>
+ <div style="margin-bottom:12px">
+  <button class="gb psel ${OPEN.psel?"open":""}" data-a="tg" data-v="psel">
+   <span class="gdot" style="background:${gcol(cur.g,cur.gi)}"></span>
+   <div class="sp" style="min-width:0">
+    <div class="mu" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em">${esc(cur.g.name)}</div>
+    <div style="font-size:16px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(e.name)}</div>
+   </div>
+   ${I("chev","cv")}
+  </button>
+  <div class="col ${OPEN.psel?"open":""}" id="c-psel"><div>
+   <div class="g pdrop">
+    <div class="mu" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin:0 2px 6px">1. Fascio muscolare</div>
+    <div class="gchips">${db.groups.map((g,i)=>`<button class="gb ${g.id===selG.id?"on":""}" data-a="pg" data-v="${g.id}"><span class="gdot" style="background:${gcol(g,i)}"></span>${esc(g.name)}</button>`).join("")}</div>
+    <div class="mu" style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;margin:0 2px 6px">2. Esercizio · ${esc(selG.name)}</div>
+    <div class="exlist">${selG.ex.length?selG.ex.map(x=>{const sCnt=new Set((x.logs||[]).map(z=>new Date(z.d).toDateString())).size;return`<button class="gb exopt ${x.id===e.id?"on":""}" data-a="pe" data-v="${x.id}"><span class="row" style="gap:8px;min-width:0">${I(ty(x).i)}<span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(x.name)}</span></span><small style="opacity:.75;font-weight:500;flex:none">${sCnt?sCnt+" sess.":"vuoto"}</small></button>`}).join(""):`<div class="mu" style="text-align:center;padding:12px 0">Nessun esercizio in questo gruppo</div>`}</div>
+   </div>
+  </div></div>
+ </div>
  <div class="seg" style="margin-bottom:12px">${t.M.map(m=>`<button class="gb ${m[0]===M[0]?"on":""}" data-a="met" data-v="${m[0]}">${m[1]}</button>`).join("")}</div>
- <div class="g cg" style="padding:14px 10px 6px"><div class="mu" style="margin:0 8px 6px">${M[3]} · ${esc(cur.g.name)}</div>${chart(pts)}</div>
- <h2>Statistiche</h2><div class="pr"><div class="g gb" style="border-radius:18px"><b>${pr?+pr.toFixed(1)+t.u:"—"}</b><small>Record</small></div><div class="g gb" style="border-radius:18px"><b>${l?+Math.max(...l.s.map(t.one)).toFixed(1)+t.u:"—"}</b><small>Ultimo</small></div><div class="g gb" style="border-radius:18px"><b>${ses}</b><small>Sessioni</small></div></div>
- <div class="g item row"><span class="mu sp">${t.tot[0]}</span><b>${ls.length?t.tot[1](ls):"—"}</b></div>
- ${(e.t||"peso")==="peso"&&ls.some(x=>e1(x)>0)?`<div class="g item row"><span class="mu sp">1RM stimato (miglior serie)</span><b>${+Math.max(...ls.map(e1)).toFixed(1)} kg</b></div>`:""}${ls.some(x=>x.pr)?`<div class="g item row"><span class="mu sp">Record battuti</span><b>${ls.filter(x=>x.pr).length}</b></div>`:""}${bwv()&&pr&&(e.t||"peso")==="peso"?`<div class="g item row"><span class="mu sp">Record / peso corporeo</span><b>${(pr/bwv()).toFixed(2)}×</b></div>`:""}</div>`}
+ <div class="g cg" style="padding:14px 10px 6px"><div class="row" style="margin:0 8px 6px"><span class="mu sp">${M[3]}</span>${pts.length>1?`<span class="delta ${delta>0?"pos":delta<0?"neg":""}">${delta>0?"+"+delta:delta}</span>`:""}</div>${chart(pts)}</div>
+ <h2>Statistiche</h2>
+ <div class="pr">
+  <div class="g gb" style="border-radius:18px"><b>${pr?+pr.toFixed(1)+t.u:"—"}</b><small>Record</small></div>
+  <div class="g gb" style="border-radius:18px"><b>${l?+Math.max(...l.s.map(t.one)).toFixed(1)+t.u:"—"}</b><small>Ultimo</small></div>
+  <div class="g gb" style="border-radius:18px"><b>${ses}</b><small>Sessioni</small></div>
+ </div>
+ <div class="g detcard">${detRows}</div></div>`}
 function vSet(){const P=db.prof,w=bwv(),bmi=P.h&&w?w/Math.pow(P.h/100,2):0;return`<h1><span>Profilo</span></h1>
  <button class="gb acc ${OPEN.prof?"open":""}" data-a="tg" data-v="prof"><span class="row" style="gap:10px">${I("user")}<b>Dati fisici</b></span><span class="mu sp" style="text-align:right;font-weight:500">${w?w+" kg":"—"} · ${P.h?P.h+" cm":"—"}</span>${I("chev","cv")}</button>
  <div class="col ${OPEN.prof?"open":""}" id="c-prof"><div><div class="g" style="padding:16px;margin-top:12px"><div class="f2"><div><label>Altezza (cm)</label><input id="ph" type="number" inputmode="numeric" value="${P.h||""}" placeholder="175"></div><div><label>Peso (kg)</label><input id="pw" type="number" inputmode="decimal" step="0.1" value="${w||""}" placeholder="70"></div></div><button class="gb on" data-a="prof" style="width:100%">${I("check")} Salva misure</button></div>
@@ -394,7 +444,7 @@ const SLOW={log:1,prof:1,astart:1,aend:1,imp:1,exp:1};
 document.addEventListener("click",ev=>{
  const el=ev.target.closest("[data-a]");if(!el)return;const a=el.dataset.a,v=el.dataset.v,g=G(),e=E();if(a!=="log"&&a!=="same")tap();
  if(SLOW[a]){const n=Date.now();if(n-(LK[a]||0)<900)return;LK[a]=n}
- if(a==="tab"){if(v===tab&&!(v==="train"&&(V.g||V.e)))return;const ni=TABS.findIndex(t=>t[0]===v),oi=TABS.findIndex(t=>t[0]===tab);goto(ni>=oi?"f":"b",()=>{tab=v;EM=0;OPEN.prof=OPEN.bk=OPEN.det=0;if(v==="train")V={}})}
+ if(a==="tab"){if(v===tab&&!(v==="train"&&(V.g||V.e)))return;const ni=TABS.findIndex(t=>t[0]===v),oi=TABS.findIndex(t=>t[0]===tab);goto(ni>=oi?"f":"b",()=>{tab=v;EM=0;OPEN.prof=OPEN.bk=OPEN.det=OPEN.psel=0;if(v==="train")V={}})}
  else if(a==="grp")goto("f",()=>{EM=0;V={g:v}});else if(a==="ex")goto("f",()=>{OPEN.det=0;V={g:V.g,e:v}});
  else if(a==="back")goto("b",()=>{EM=0;V=V.e?{g:V.g}:{}});
  else if(a==="addg"){if(db.groups.length>=24)toast("Limite di 24 gruppi raggiunto");else gsheet(null)}else if(a==="eg")gsheet(db.groups.find(x=>x.id===v));
@@ -416,7 +466,9 @@ document.addEventListener("click",ev=>{
   e.logs.push(o);save();if(isPR){toast("Nuovo record! "+(PRL[e.t||"peso"]||PRL.peso)(nv),"trophy");beep("campanello");vib()}else{toast("Salvato");tap([30,40,30])}render(true)}
  else if(a==="same"){const t=ty(e),lx=(e.logs||[])[(e.logs||[]).length-1];if(!lx)return;t.f.forEach(f=>{const i=$("#"+f[0]);if(i&&f[0]!=="s"&&lx[f[0]]!==undefined)i.value=lx[f[0]]});const r=$("#rpe"),n=$("#nt");if(r)r.value=0;if(n)n.value="";const b=$("[data-a=log]");if(b)b.click()}
  else if(a==="dlog")del("Serie eliminata",()=>{e.logs=e.logs.filter(x=>x.d!==+v)});
- else if(a==="pe"){PE=v;render(true)}else if(a==="met"){db.metric=v;save();render(true)}
+ else if(a==="pg"){PG=v;OPEN.psel=1;render(true)}
+ else if(a==="pe"){PE=v;const fg=db.groups.find(gr=>gr.ex.some(x=>x.id===v));if(fg)PG=fg.id;OPEN.psel=0;render(true)}
+ else if(a==="met"){db.metric=v;save();render(true)}
  else if(a==="th"){db.theme=v;save();render(true)}
  else if(a==="tset")picker("Preset "+(+v+1),db.timers[v],s=>{db.timers[v]=s;save();if(!T.run&&T.left===T.total&&v==0){T.total=T.left=s}render(true)});
  else if(a==="notif"){beep();try{Notification.requestPermission().then(p=>toast(p==="granted"?"Notifiche abilitate":"Notifiche non concesse"))}catch(x){toast("Notifiche non supportate qui")}}
